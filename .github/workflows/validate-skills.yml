@@ -1,0 +1,40 @@
+name: Validate Real-Time Skills
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate SKILL.md Frontmatter & Structure
+        run: |
+          python3 - <<'EOF'
+          import pathlib, sys
+
+          skills_dir = pathlib.Path("skills")
+          skill_files = sorted(skills_dir.glob("*/SKILL.md"))
+          if not skill_files:
+              print("ERROR: No SKILL.md files found under skills/")
+              sys.exit(1)
+
+          for sf in skill_files:
+              text = sf.read_text(encoding="utf-8")
+              if not text.startswith("---\n"):
+                  print(f"ERROR: {sf} missing YAML frontmatter")
+                  sys.exit(1)
+              parts = text.split("---\n", 2)
+              if len(parts) < 3:
+                  print(f"ERROR: {sf} malformed YAML frontmatter")
+                  sys.exit(1)
+              frontmatter = parts[1]
+              expected_name = f"name: {sf.parent.name}"
+              if expected_name not in frontmatter:
+                  print(f"ERROR: {sf} frontmatter missing '{expected_name}'")
+                  sys.exit(1)
+              if "description:" not in frontmatter:
+                  print(f"ERROR: {sf} frontmatter missing 'description:'")
+                  sys.exit(1)
+              print(f"OK: {sf} validated ({len(text)} bytes)")
+          EOF
